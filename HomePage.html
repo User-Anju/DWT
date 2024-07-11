@@ -1,0 +1,140 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DWT</title>
+    <script type="text/javascript" src="Resources/dynamsoft.webtwain.initiate.js"></script>
+    <script type="text/javascript" src="Resources/dynamsoft.webtwain.config.js"></script>
+    <script src="Resources/dynamsoft.webtwain.min.js"></script>
+    <script src="Resources/dynamsoft.webtwain.min.mjs"></script>
+
+    <style>
+        #dwtcontrolContainer {
+            width: 450px; 
+            height: 400px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            margin-top: 10px;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            Dynamsoft.WebTwainEnv.Load();
+
+            let dwObject; // Declare dwObject globally
+
+            // Initialize Dynamic Web TWAIN
+            Dynamsoft.WebTwainEnv.CreateDWTObjectEx({
+                WebTwainId: 'dwtcontrolContainer',
+                width: 450,
+                height: 400,
+                onReady: function () {
+                    dwObject = Dynamsoft.WebTwainEnv.GetWebTwain('dwtcontrolContainer');
+                }
+            });
+
+            // Event listener for the scan button
+            document.getElementById("scanButton").addEventListener("click", function () {
+                if (dwObject) {
+                    dwObject.SelectSource();
+                    dwObject.OpenSource();
+                    dwObject.AcquireImage();
+                } else {
+                    console.error('Dynamic Web TWAIN is not initialized.');
+                }
+            });
+
+            // Event listener for the scan and save1 button
+            document.getElementById("scanAndSave1Button").addEventListener("click", function () {
+                if (dwObject) {
+                    dwObject.SelectSource();
+                    dwObject.OpenSource();
+                    dwObject.IfShowFileDialog = true; // Enable the file dialog for saving
+                    dwObject.SaveAsMultiPagePDF('C:\Users\alexk\OneDrive\Desktop\DWT Scan\result.pdf', function () {
+                        console.log('Images saved as multi-page PDF.');
+                    }, function (errorCode, errorString) {
+                        console.error('Failed to save as multi-page PDF:', errorString);
+                    });
+                } else {
+                    console.error('Dynamic Web TWAIN is not initialized.');
+                }
+            });
+
+            // Event listener for the scan and save2 button
+            document.getElementById("scanAndSave2Button").addEventListener("click", function () {
+                if (dwObject) {
+                    dwObject.SelectSource();
+                    dwObject.OpenSource();
+                    dwObject.IfShowFileDialog = true; // Enable the file dialog for saving
+
+                    // Callback function to handle each image after scanning
+                    let saveImageCallback = function (index) {
+                        return function () {
+                            let fileName = 'C:\Users\alexk\OneDrive\Desktop\DWT Scan\Image_' + (index + 1) + '.pdf';
+                            dwObject.SaveAsPDF(fileName, index, function () {
+                                console.log('Image ' + (index + 1) + ' saved.');
+                                if (index < dwObject.HowManyImagesInBuffer - 1) {
+                                    saveImageCallback(index + 1)();
+                                }
+                            }, function (errorCode, errorString) {
+                                console.error('Failed to save Image ' + (index + 1) + ':', errorString);
+                            });
+                        };
+                    };
+
+                    // Start saving images recursively
+                    if (dwObject.HowManyImagesInBuffer > 0) {
+                        saveImageCallback(0)();
+                    } else {
+                        console.warn('No images to save.');
+                    }
+                } else {
+                    console.error('Dynamic Web TWAIN is not initialized.');
+                }
+            });
+
+            // Event listener for the remove blank images button
+            document.getElementById("removeBlankImagesButton").addEventListener("click", function () {
+                if (dwObject) {
+                    let numImages = dwObject.HowManyImagesInBuffer;
+                    for (let i = numImages - 1; i >= 0; i--) {
+                        if (dwObject.GetImageBitDepth(i) === 1 && dwObject.GetImageWidth(i) === 0 && dwObject.GetImageHeight(i) === 0) {
+                            dwObject.RemoveImage(i);
+                        }
+                    }
+                    console.log('Blank images removed.');
+                } else {
+                    console.error('Dynamic Web TWAIN is not initialized.');
+                }
+            });
+
+            // Event listener for the remove all images button
+            document.getElementById("removeAllImagesButton").addEventListener("click", function () {
+                if (dwObject) {
+                    dwObject.RemoveAllImages();
+                    console.log('All images removed.');
+                } else {
+                    console.error('Dynamic Web TWAIN is not initialized.');
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+    <div id="dwtcontrolContainer"></div>
+    <div class="button-container">
+        <button id="scanButton">Scan</button>
+        <button id="scanAndSave1Button">Scan and Save1 (Multi-page PDF)</button>
+        <button id="scanAndSave2Button">Scan and Save2 (Individual PDFs)</button>
+        <button id="removeBlankImagesButton">Remove Blank Images</button>
+        <button id="removeAllImagesButton">Remove All Images</button>
+    </div>
+</body>
+</html>
